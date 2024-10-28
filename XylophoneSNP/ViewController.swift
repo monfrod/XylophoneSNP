@@ -8,6 +8,7 @@
 import UIKit
 import SnapKit
 import AVFoundation
+import CoreData
 
 class ViewController: UIViewController {
     
@@ -34,27 +35,46 @@ class ViewController: UIViewController {
     let AButton = UIButton()
     let BButton = UIButton()
     var player: AVAudioPlayer?
-
+    var recordingIsEnabled: Bool = false
+    var song:[NSString] = []
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
+    private var models = [RecordingData]()
+    
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        view.backgroundColor = .white
+        view.backgroundColor = .systemBackground
         setupUI()
         
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "rec/stop", style: .done, target: self, action: #selector(startRecording))
+        
     }
+    
+    @objc func startRecording(){
+        if !recordingIsEnabled{
+            recordingIsEnabled = true
+        }
+        else if recordingIsEnabled{
+            stopRecording()
+            recordingIsEnabled = false
+        }
+    }
+    
     func playAudio(title: String){
         guard let path = Bundle.main.path(forResource: title, ofType:"wav") else {
-                return }
-            let url = URL(fileURLWithPath: path)
-
-            do {
-                player = try AVAudioPlayer(contentsOf: url)
-                player?.play()
-                
-            } catch let error {
-                print(error.localizedDescription)
-            }
+            return }
+        let url = URL(fileURLWithPath: path)
+        
+        do {
+            player = try AVAudioPlayer(contentsOf: url)
+            player?.play()
+            
+        } catch let error {
+            print(error.localizedDescription)
+        }
     }
     
     @objc func buttonPressed(sender: UIButton){
@@ -62,18 +82,60 @@ class ViewController: UIViewController {
         UIView.animate(withDuration: 0.1) {
             self.view.backgroundColor = sender.backgroundColor
         }
-//        view.backgroundColor = sender.backgroundColor
+        //        view.backgroundColor = sender.backgroundColor
         sender.alpha = 0.5
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05){
             if let text = sender.titleLabel?.text{
                 self.playAudio(title: text)
                 sender.alpha = 1
-//                self.view.backgroundColor = .white
                 UIView.animate(withDuration: 0.1) {
-                    self.view.backgroundColor = .white
+                    self.view.backgroundColor = .systemBackground
                 }
             }
         }
+        if recordingIsEnabled {
+            song.append((sender.titleLabel?.text)! as NSString)
+            print(song)
+        }
+    }
+    func stopRecording(){
+        let alert = UIAlertController(title: "Give the name of your song", message: nil, preferredStyle: .alert)
+        
+        alert.addTextField()
+        let addButton = UIAlertAction(title: "Add", style: .default) { _ in
+            self.addSong(name: alert.textFields?.first?.text ?? "")
+            self.song = []
+        }
+        alert.addAction(addButton)
+        
+        present(alert, animated: true)
     }
     
+    
+    // MARK: CoreData
+    
+    func getAllSongs(){
+        let fetchRequest: NSFetchRequest<RecordingData> = RecordingData.fetchRequest()
+        fetchRequest.returnsObjectsAsFaults = false
+        
+        do {
+            let items = try context.fetch(fetchRequest)
+        }catch {
+            print("Error fetching songs: \(error)")
+        }
+    }
+    
+    func addSong(name: String){
+        let newSong = RecordingData(context: context)
+        newSong.songName = name
+        newSong.recording = song
+        
+        do {
+            try context.save()
+            getAllSongs()
+            
+        } catch {
+            print("Error fetching songs: \(error)")
+        }
+    }
 }
