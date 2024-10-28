@@ -8,7 +8,7 @@ import UIKit
 import SnapKit
 import AVFoundation
 
-class RecordingViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, AVAudioPlayerDelegate {
+class RecordingViewController: UIViewController, UITableViewDataSource, UITableViewDelegate{
     
     
     let tableView:UITableView = {
@@ -23,6 +23,7 @@ class RecordingViewController: UIViewController, UITableViewDataSource, UITableV
     var models = [RecordingData]()
     var songQueue: [String] = []
     var playSong: Bool = false
+    var playTimer: Timer?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -44,6 +45,8 @@ class RecordingViewController: UIViewController, UITableViewDataSource, UITableV
     }
     
     @objc func stopPlaySong(){
+        playTimer?.invalidate()
+        navigationItem.rightBarButtonItem?.tintColor = .systemBlue
         playSong = false
     }
     
@@ -75,7 +78,8 @@ class RecordingViewController: UIViewController, UITableViewDataSource, UITableV
         let playAction = UIAlertAction(title: "Play", style: .default) { _ in
             self.songQueue = self.models[indexPath.row].recording.compactMap { $0 as? NSString as String? }
             self.playSong = true
-            self.playNextSong()
+            self.navigationItem.rightBarButtonItem?.tintColor = .red
+            self.startTimer()
         }
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.deleteItem(item: self.models[indexPath.row])
@@ -88,7 +92,11 @@ class RecordingViewController: UIViewController, UITableViewDataSource, UITableV
     }
     
     func playNextSong() {
-        guard !songQueue.isEmpty else { return }
+        guard !songQueue.isEmpty, playSong else {
+            playTimer?.invalidate()
+            playTimer = nil
+            return
+        }
         
         let nextSongTitle = songQueue.removeFirst()
         playSong(title: nextSongTitle)
@@ -102,16 +110,12 @@ class RecordingViewController: UIViewController, UITableViewDataSource, UITableV
             
             do {
                 player = try AVAudioPlayer(contentsOf: url)
-                player?.delegate = self
                 player?.play()
                 
             } catch let error {
                 print(error.localizedDescription)
             }
         }
-    }
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        playNextSong()
     }
     
     func deleteItem(item: RecordingData){
@@ -122,5 +126,11 @@ class RecordingViewController: UIViewController, UITableViewDataSource, UITableV
         } catch {
             print("Error delete item")
         }
+    }
+    
+    func startTimer(){
+        playTimer = Timer.scheduledTimer(withTimeInterval: 1.7, repeats: true, block: { _ in
+            self.playNextSong()
+        })
     }
 }

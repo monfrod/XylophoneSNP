@@ -56,9 +56,11 @@ class ViewController: UIViewController {
     @objc func startRecording(){
         if !recordingIsEnabled{
             recordingIsEnabled = true
+            navigationItem.rightBarButtonItem?.tintColor = .red
         }
         else if recordingIsEnabled{
             stopRecording()
+            navigationItem.rightBarButtonItem?.tintColor = .systemBlue
             recordingIsEnabled = false
         }
     }
